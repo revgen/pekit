@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+OSTYPE="${OSTYPE:-"$(uname -s | tr "[:lower:]" "[:upper:]")"}"
+case "${OSTYPE}" in
+  linux*)
+    if grep "Microsoft\|WSL" /proc/sys/kernel/osrelease > /dev/null; then
+      echo "wsl"
+    else
+      echo "linux"
+    fi;;
+  darwin*|macos*) echo "macos";;
+  msys*|cygwin*) echo "windows";;
+  *) echo "unknown"; exit 1 ;;
+esac

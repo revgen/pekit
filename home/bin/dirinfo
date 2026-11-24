@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+cd "${1:-"."}" || return 1
+printf "Name : "; pwd
+printf "Files: "; find . -type f | wc -l | sed 's/ //g'
+printf "Dirs : "; find . -type d | wc -l | sed 's/ //g'
+printf "Size : "; du -sh . | awk '{print $1}'

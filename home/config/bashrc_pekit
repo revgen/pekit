@@ -1,0 +1,114 @@
+# If not running interactively, don't do anything
+[ -z "${PS1}" ] && return
+
+kitname="pekit"
+# Need to optimize
+osname="unknown"
+case "$(uname -s | tr "[:lower:]" "[:upper:]")" in
+  linux*)
+    if grep "Microsoft\|WSL" /proc/sys/kernel/osrelease > /dev/null; then osname=wsl;
+    else osname=linux; fi
+    ;;
+  darwin*|macos*)
+    export PATH="/opt/homebrew/bin:${PATH}"
+    osname=macos
+    ;;
+  msys*|cygwin*) osname=windows ;;
+esac
+
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-"${HOME}/.config"}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-"${HOME}/.local/share"}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-"${HOME}/.local/state"}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-"${HOME}/.cache"}"
+
+export PATH="${HOME}/.local/bin:${PATH}"
+export EDITOR=vi
+export WORKSPACE="${HOME}/Documents/Workspace"
+export PEKITHOME="${PEKITHOME:-"${XDG_DATA_HOME}"}"
+
+# ------[ Terminal settings ]--------------------------------------------------
+if [ -z "${SSH_TTY:-""}" ]; then
+    export PS1="\u@\h:\W\$ "
+else
+    export PS1="SSH>\u@\h:\W\$ "
+fi
+
+# Turn off mail notification in terminal
+export MAILCHECK=-1
+
+# ------[ Tool's settings ]----------------------------------------------------
+# Docker build verbose mode
+export DOCKER_BUILDKIT=1
+export BUILDKIT_PROGRESS=plain
+
+# ------[ Python specific ]----------------------------------------------------
+# disabling Python bytecode (.pyc) files: generating the bytecode is extremely fast,
+# and isn’t something we need to worry about while developing our code
+export PYTHONDONOTWRITEBYTECODE=1
+export PYTHONWARNINGS="ignore"
+
+# ------[ Fuzzy finder ]-------------------------------------------------------
+if command -v "fzf" >/dev/null; then eval "$(fzf --bash)"; fi
+
+# ------[ Console History ]----------------------------------------------------
+export HISTCONTROL=ignoreboth;                # Don't add similar command in the history
+shopt -s histappend 2>/dev/null;              # Store immediately and from all sessions
+if command -v "history" >/dev/null; then PROMPT_COMMAND='history -a'; fi
+export HISTSIZE=99999;                       # Store more commands in the history
+export HISTFILESIZE=99999
+
+# Prevent tar and other programs from giving special meaning to ._* archive members
+export COPYFILE_DISABLE=1
+
+#-- Useful aliases -----------------------------------------------------------
+alias ll='ls -ahl'
+alias l='ll'
+alias ltree='ls -R|grep ":$"|sed -e "s/:$//" -e "s/[^-][^\/]*\//--/g" -e "s/^/   /" -e "s/-/|/"'
+alias tree='tree -N'
+alias c='clear'
+alias :q='exit'
+
+alias ws='cd ${WORKSPACE} && pwd'
+alias lynx='lynx -accept_all_cookies'
+alias duf='duf --hide-mp "/dev, *com*, *ystem*" --hide-fs "tmpfs, efivarfs"'
+alias lower='tr "[:upper:]" "[:lower:]"'
+alias upper='tr "[:lower:]" "[:upper:]"'
+
+#-- Useful functions ----------------------------------------------------------
+ls-recursively() { find ${1:-"${PWD}"} -type f -print0 | xargs -0 ls -al; }
+
+#-- Git settions --------------------------------------------------------------
+if [ -f "${HOME}/.git_completion" ]; then . "${HOME}/.git_completion"; fi
+
+#-- OS Specific settings ------------------------------------------------------
+if [ -r "${PEKITHOME}/home/config/bashrc_pekit_${osname}" ]; then
+    . "${PEKITHOME}/home/config/bashrc_pekit_${osname}"
+fi
+#-- Terminal settings ---------------------------------------------------------
+[ ! -d "${HOME}/.local/var/tmp" ] && mkdir -p "${HOME}/.local/var/tmp"
+echo "${COLUMNS}x${LINES}" > "${HOME}/.local/var/tmp/$(basename $(tty))-geometry"
+
+# ------[ Customer welcome screen ]--------------------------------------------
+if ! command -v "${kitname}" >/dev/null; then
+  echo "ERROR: you have a problem with the ${kitname} environment: name=${PEKITNAME}, home=${PEKITHOME}" >&2
+else
+  #if [ -n "${TERM_PROGRAM}" ]; then       # show additional information in a regular terminals
+  if [ -x "${MYENVHOME}/home/.config/${MYENVNAME}/user-welcome" ]; then
+    "${MYENVHOME}/home/.config/${MYENVNAME}/user-welcome"
+  else
+    "${PEKITNAME}" --version
+  fi
+fi
+
+#-- Load a user specific configuration ----------------------------------------
+if [ -f "${HOME}/.config/.bashrc_${USER}" ]; then . "${HOME}/.config/.bashrc_${USER}"; fi
+if [ -f "${HOME}/.config/.bashrc_local" ]; then . "${HOME}/.config/.bashrc_local"; fi
+
+# --[ Log ] -------------------------------------------------------------------
+if [ -n "$DISPLAY" ]; then
+    logger -t "${USER}"  "bash: init X-session"
+elif [ -n "$SSH_TTY" ]; then
+    logger -t "${USER}"  "bash: init ssh session [$SSH_CLIENT, $SSH_CONNECTION]"
+else
+    logger -t "${USER}"  "bash: init terminal session"
+fi

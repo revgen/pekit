@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+if [[ -t 2 ]] && [[ -z "${NO_COLOR-}" ]] && [[ "${TERM-}" != "dumb" ]]; then
+  NOFORMAT='\033[0m' INFO='\033[34m\033[1m'
+else
+  NOFORMAT='' INFO=''
+fi
+
+logo_enabled="${PEKITLOGO:-"${KITLOGO}"}"
+case "${logo_status,,}" in
+    disabled|off|false:0) echo "Logo is disabled" >&2; exit 1;;
+esac
+echo "===================================================================="
+echo -en "${INFO}"
+if command -v figlet > /dev/null; then
+    hostname | figlet
+else
+    echo "Hostname: $(hostname)"
+fi
+echo -en "${NOFORMAT}"
+echo "===================================================================="
+pekit --version 2> /dev/null

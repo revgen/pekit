@@ -5,30 +5,77 @@
 ## Usage: {SCRIPT_NAME} <command> [arguments]
 ##
 ## Commands:
+##   install    - install to the system
 ##   update     - update tool
 ##   logo       - show tool logo
+##   banner     - show banner with system information
+##   apps       - to see list of tools and aliases
 ##   version    - show current version
 ##
+## Source code:
+##   https://github.com/revgen/pekit.git
+##   git clone git@github.com:revgen/pekit.git
 # ############################################################################
-name=pekit
-version=0.1.0
 set -euo pipefail
+if [[ -z "${BASH_VERSION:-}" ]]; then echo "Error: Bash is required." >&2; exit 1; fi
+
+KIT_NAME="$(basename "${0}" 2>/dev/null || echo "pekit")"
+KIT_HOME="$(readlink -f "$(dirname "$(readlink -f "${0}" || pwd -P)")" || exit 1)"
+VERSION=0.1.0
+
+#--[Settings for color output]------------------------------------------------
+NOCOLOR=''; RED=''; GREEN=''; YELLOW=''; BLUE=''; PURPLE=''; CYAN=''; WHITE=''; GRAY='';
+if test -t 1 && [ "${NOCOLOR:-""}" != "true" ] && [ "${NO_COLOR:-""}" != "true" ]; then
+    ncolors=$(tput colors 2>/dev/null)
+    if test -n "$ncolors" && test $ncolors -ge 8; then
+        NOCOLOR='\033[0m'; RED='\033[1;31m'; GREEN='\033[1;32m'; YELLOW='\033[1;33m'; BLUE='\033[1;34m';
+        PURPLE='\033[1;35m'; CYAN='\033[1;36m'; WHITE='\033[1;37m'; GRAY='\033[0;90m';
+    fi
+fi
+
+#-------------------------------------------------------------------------------
+debug() { [[ "${DEBUG}" == "true" ]] && echo >&2 -e "${CYAN}$*${NOCOLOR}"; }
+info() { echo >&2 -e "${GREEN}$*${NOCOLOR}"; }
+error() { echo >&2 -e "${RED}$*${NOCOLOR}"; }
 
 show_logo() {
-    cat << EOF
-:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
-::::::'▒▒▒▒▒▒▒▒::'▒▒▒▒▒▒▒▒:'▒▒:::'▒▒:'▒▒▒▒:'▒▒▒▒▒▒▒▒:::::::
-:::::: ▒▒.... ▒▒: ▒▒.....:: ▒▒::'▒▒::. ▒▒::... ▒▒..::::::::
-:::::: ▒▒:::: ▒▒: ▒▒::::::: ▒▒:'▒▒:::: ▒▒::::: ▒▒::::::::::
-:::::: ▒▒▒▒▒▒▒▒:: ▒▒▒▒▒▒::: ▒▒▒▒▒::::: ▒▒::::: ▒▒::::::::::
-:::::: ▒▒.....::: ▒▒...:::: ▒▒. ▒▒:::: ▒▒::::: ▒▒::::::::::
-:::::: ▒▒:::::::: ▒▒::::::: ▒▒:. ▒▒::: ▒▒::::: ▒▒::::::::::
-:::::: ▒▒:::::::: ▒▒▒▒▒▒▒▒: ▒▒::. ▒▒:'▒▒▒▒:::: ▒▒::::::::::
-::::::..:::::::::........::..::::..::....:::::..:::::::::::
-EOF
+    local len="$((32 - $(echo -n "${VERSION}" | wc -c)))"
+    echo -en "${BLUE}"
+    # echo "PEKit" | figlet -f ANSI SHhadow
+    # sed 's/║/│/g' | sed 's/╝/┘/g' | sed 's/╚/└/g' | sed 's/╔/┌/g' | sed 's/╗/┐/g' | sed 's/═/─/g'
+    echo "
+╭───────────────────────────────────────╮
+│  ██████┐ ███████┐██┐  ██┐██┐████████┐ │
+│  ██┌──██┐██┌────┘██│ ██┌┘██│└──██┌──┘ │
+│  ██████┌┘█████┐  █████┌┘ ██│   ██│    │
+│  ██┌───┘ ██┌──┘  ██┌─██┐ ██│   ██│    │
+│  ██│██┐  ████┐██┐██│  ██┐██│   ██│    │
+│  └─┘└─┘  └───┘└─┘└─┘  └─┘└─┘   └─┘    │
+╰─$(printf '─%.0s' $(seq 1 ${len}))───┤#VERSION#├─╯
+" | grep -v "^$" | sed 's/#VERSION#/'"${VERSION}"'/g'
+    echo -en "${NOCOLOR}"
 }
 
-show_usage() { sed -n '/^##/,/^$/s/^## \{0,1\}//p' "$0" | sed 's/{SCRIPT_NAME}/'"${0##*/}"'/g'; }
+show_usage() { sed -n '/^##/,/^$/s/^## \{0,1\}//p' "$0" | sed 's/{SCRIPT_NAME}/'"${KIT_NAME}"'/g'; }
+
+show_banner() {
+    export OSTYPE="${OSTYPE:-"$(uname -s | tr "[:lower:]" "[:upper:]")"}"
+    case "${OSTYPE}" in
+        linux*)  osinfo="$(grep "^NAME\|VERSION_ID" /etc/os-release | sort |  sed 's/NAME=//g' | sed 's/VERSION_ID=//g' | sed 's/"//g' | xargs)" ;;
+        darwin*) osinfo="$(sw_vers | grep Product | cut -d":" -f2 | xargs)";;
+        *)       osinfo=unknown ;;
+    esac
+    if echo "${KIT_HOME}" | grep -q "^${HOME}"; then
+        home_len="$(echo "${HOME}" | wc -c | sed 's/ //g')"
+        env_home="~/$(echo "${KIT_HOME}" | sed "s/^.\{$home_len\}//")"
+    else
+        env_home="${KIT_HOME}"
+    fi
+    osarch="$(arch | sed 's/x86_64/x64/')"
+    shell="$(echo "#$(basename "${SHELL}")" | sed 's/#bash/Ⓑ/' | sed 's/#zsh/Ⓩ/' | sed 's/#ash/Ⓐ/' | sed 's/#[a-z]*sh/Ⓢ/')"
+    # Separators: █ ▸ ▶ ▬ ◣ ◯ ◰ ➤ ↣ ≫ ≋ ≀ ⊣ ⊿ ❯
+    echo -e "${BLUE}${shell} ${KIT_NAME} v${VERSION}${NOCOLOR} ${CYAN}> ${osinfo} ${osarch}${NOCOLOR} ${GRAY}$ ${env_home}"${NOCOLOR}
+}
 
 update() {
     echo "TBD"
@@ -37,7 +84,9 @@ update() {
 # ----------------------------------------------------------------------------
 case "${1:-"--help"}" in
     help|--help) show_usage; exit 1;;
-    logo) show_logo; exit 0;;
-    version|--version|-v) echo "${name} ${version}"; exit 0;;
-    *) echo "Error: unknown '${1}' command."; exit 1;;
+    update) shift; update "${@}";;
+    logo) show_logo;;
+    banner) show_banner;;
+    version|--version|-v) echo "${KIT_NAME} ${VERSION}";;
+    *) error "Error: unknown '${1}' command."; exit 1;;
 esac

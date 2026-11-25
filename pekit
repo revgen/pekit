@@ -1,20 +1,25 @@
 #!/usr/bin/env bash
 # ############################################################################
-## Personal Environment Toolkit shell tools.
+## pekit — Personal Environment Toolkit
 ##
-## Usage: {SCRIPT_NAME} <command> [arguments]
+## Shell tools, aliases, and configuration for your local environment.
+##
+## Usage: pekit <command> [arguments]
 ##
 ## Commands:
-##   install    - install to the system
-##   update     - update tool
-##   logo       - show tool logo
-##   banner     - show banner with system information
-##   apps       - to see list of tools and aliases
-##   version    - show current version
+##   install    Install pekit for the current user
+##   update     Update pekit
+##   logo       Display the pekit logo
+##   banner     Display a banner with system information
+##   apps       List available tools and aliases
+##   version    Show the installed pekit version
 ##
-## Source code:
-##   https://github.com/revgen/pekit.git
-##   git clone git@github.com:revgen/pekit.git
+## Repository:
+##   Web        https://github.com/revgen/pekit
+##   Git (SSH)  git@github.com:revgen/pekit.git
+##
+## Quick install:
+##   curl -fsSL https://revgen.github.io/pekit/install-pekit.sh | bash
 # ############################################################################
 set -euo pipefail
 if [[ -z "${BASH_VERSION:-}" ]]; then echo "Error: Bash is required." >&2; exit 1; fi
@@ -77,16 +82,31 @@ show_banner() {
     echo -e "${BLUE}${shell} ${KIT_NAME} v${VERSION}${NOCOLOR} ${CYAN}> ${osinfo} ${osarch}${NOCOLOR} ${GRAY}$ ${env_home}"${NOCOLOR}
 }
 
+show_apps() {
+    cd "${KIT_HOME}"
+    echo "---------- Aliases ----------"
+    echo ""
+    echo "---------- Utility ----------"
+    cd tools
+    find . -maxdepth 1 -type f -executable | sed 's/^\.\///g' | sort
+}
+
 update() {
+    echo "TBD"
+}
+
+install() {
     echo "TBD"
 }
 
 # ----------------------------------------------------------------------------
 case "${1:-"--help"}" in
     help|--help) show_usage; exit 1;;
+    install|init) shift; install "${@}";;
     update) shift; update "${@}";;
     logo) show_logo;;
     banner) show_banner;;
+    apps|list|scripts) shift; show_apps "${@}";;
     version|--version|-v) echo "${KIT_NAME} ${VERSION}";;
     *) error "Error: unknown '${1}' command."; exit 1;;
 esac

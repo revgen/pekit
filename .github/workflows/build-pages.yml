@@ -44,7 +44,7 @@ jobs:
           cp -vR ./setup/ ./_site/
           rm -rf ./tools/drafts/
           cp -vR ./tools/ ./_site/
-          cp -v ./install-myenv.sh ./_site/
+          cp -v ./install-pekit.sh ./_site/
           rm README.md
       - name: Generate Directory Listings
         uses: jayanta525/github-pages-directory-listing@v4.0.0
